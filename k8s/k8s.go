@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jtblin/kube2iam"
+	"github.com/imduffy15/kube2iam"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/v1"

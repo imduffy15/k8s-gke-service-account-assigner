@@ -6,10 +6,10 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
 
-	"github.com/jtblin/kube2iam/iam"
-	"github.com/jtblin/kube2iam/iptables"
-	"github.com/jtblin/kube2iam/server"
-	"github.com/jtblin/kube2iam/version"
+	"github.com/imduffy15/kube2iam/iam"
+	"github.com/imduffy15/kube2iam/iptables"
+	"github.com/imduffy15/kube2iam/server"
+	"github.com/imduffy15/kube2iam/version"
 )
 
 // addFlags adds the command line flags.

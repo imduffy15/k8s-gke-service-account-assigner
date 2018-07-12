@@ -17,10 +17,10 @@ import (
 	log "github.com/sirupsen/logrus"
 	"k8s.io/client-go/tools/cache"
 
-	"github.com/jtblin/kube2iam"
-	"github.com/jtblin/kube2iam/iam"
-	"github.com/jtblin/kube2iam/k8s"
-	"github.com/jtblin/kube2iam/mappings"
+	"github.com/imduffy15/kube2iam"
+	"github.com/imduffy15/kube2iam/iam"
+	"github.com/imduffy15/kube2iam/k8s"
+	"github.com/imduffy15/kube2iam/mappings"
 )
 
 const (

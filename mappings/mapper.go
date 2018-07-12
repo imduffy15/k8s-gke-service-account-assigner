@@ -7,8 +7,8 @@ import (
 	log "github.com/sirupsen/logrus"
 	"k8s.io/client-go/pkg/api/v1"
 
-	"github.com/jtblin/kube2iam"
-	"github.com/jtblin/kube2iam/iam"
+	"github.com/imduffy15/kube2iam"
+	"github.com/imduffy15/kube2iam/iam"
 )
 
 // RoleMapper handles relevant logic around associating IPs with a given IAM role

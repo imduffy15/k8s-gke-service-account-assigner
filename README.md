@@ -1,8 +1,8 @@
-[![Build Status](https://travis-ci.org/jtblin/kube2iam.svg?branch=master)](https://travis-ci.org/jtblin/kube2iam)
-[![GitHub tag](https://img.shields.io/github/tag/jtblin/kube2iam.svg?maxAge=86400)](https://github.com/atlassian/gostatsd)
-[![Docker Pulls](https://img.shields.io/docker/pulls/jtblin/kube2iam.svg)]()
-[![Go Report Card](https://goreportcard.com/badge/github.com/jtblin/kube2iam)](https://goreportcard.com/report/github.com/jtblin/kube2iam)
-[![license](https://img.shields.io/github/license/jtblin/kube2iam.svg)](https://github.com/jtblin/kube2iam/blob/master/LICENSE)
+[![Build Status](https://travis-ci.org/imduffy15/kube2iam.svg?branch=master)](https://travis-ci.org/imduffy15/kube2iam)
+[![GitHub tag](https://img.shields.io/github/tag/imduffy15/kube2iam.svg?maxAge=86400)](https://github.com/atlassian/gostatsd)
+[![Docker Pulls](https://img.shields.io/docker/pulls/imduffy15/kube2iam.svg)]()
+[![Go Report Card](https://goreportcard.com/badge/github.com/imduffy15/kube2iam)](https://goreportcard.com/report/github.com/imduffy15/kube2iam)
+[![license](https://img.shields.io/github/license/imduffy15/kube2iam.svg)](https://github.com/imduffy15/kube2iam/blob/master/LICENSE)
 
 # kube2iam
 
@@ -98,7 +98,7 @@ spec:
     spec:
       hostNetwork: true
       containers:
-        - image: jtblin/kube2iam:latest
+        - image: imduffy15/kube2iam:latest
           name: kube2iam
           args:
             - "--base-role-arn=arn:aws:iam::123456789012:role/"
@@ -159,7 +159,7 @@ spec:
     spec:
       hostNetwork: true
       containers:
-        - image: jtblin/kube2iam:latest
+        - image: imduffy15/kube2iam:latest
           name: kube2iam
           args:
             - "--base-role-arn=arn:aws:iam::123456789012:role/"
@@ -360,7 +360,7 @@ spec:
       serviceAccountName: kube2iam
       hostNetwork: true
       containers:
-        - image: jtblin/kube2iam:latest
+        - image: imduffy15/kube2iam:latest
           imagePullPolicy: Always
           name: kube2iam
           args:
@@ -442,12 +442,3 @@ Usage of ./build/bin/darwin/kube2iam:
 * Expose as service: `kubectl expose deployment kube2iam --type=NodePort`
 * Retrieve the services url: `minikube service kube2iam --url`
 * Test your changes e.g. `curl -is $(minikube service kube2iam --url)/healthz`
-
-# Author
-
-Jerome Touffe-Blin, [@jtblin](https://twitter.com/jtblin), [About me](http://about.me/jtblin)
-
-# License
-
-kube2iam is copyright 2017 Jerome Touffe-Blin and contributors.
-It is licensed under the BSD license. See the included LICENSE file for details.

@@ -13,7 +13,7 @@ spec:
     spec:
       hostNetwork: true
       containers:
-        - image: jtblin/kube2iam:dev
+        - image: imduffy15/kube2iam:dev
           name: kube2iam
           args:
             - "--app-port=8181"
@@ -25,7 +25,7 @@ spec:
             - containerPort: 8181
               hostPort: 8181
               name: http
-        - image: jtblin/aws-mock-metadata:latest
+        - image: imduffy15/aws-mock-metadata:latest
           name: aws-mock-metadata
           args:
             - "--availability-zone=us-east-1c"

@@ -1,4 +1,4 @@
-package: github.com/jtblin/kube2iam
+package: github.com/imduffy15/kube2iam
 import:
 - package: github.com/aws/aws-sdk-go
   version: v1.8.7
