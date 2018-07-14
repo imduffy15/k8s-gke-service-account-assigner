@@ -1,4 +1,4 @@
-package kube2iam
+package saassigner
 
 import (
 	"fmt"
@@ -10,16 +10,16 @@ import (
 
 // PodHandler represents a pod handler.
 type PodHandler struct {
-	iamRoleKey string
+	iamServiceAccountKey string
 }
 
 func (p *PodHandler) podFields(pod *v1.Pod) log.Fields {
 	return log.Fields{
-		"pod.name":         pod.GetName(),
-		"pod.namespace":    pod.GetNamespace(),
-		"pod.status.ip":    pod.Status.PodIP,
-		"pod.status.phase": pod.Status.Phase,
-		"pod.iam.role":     pod.GetAnnotations()[p.iamRoleKey],
+		"pod.name":               pod.GetName(),
+		"pod.namespace":          pod.GetNamespace(),
+		"pod.status.ip":          pod.Status.PodIP,
+		"pod.status.phase":       pod.Status.Phase,
+		"pod.iam.serviceAccount": pod.GetAnnotations()[p.iamServiceAccountKey],
 	}
 }
 
@@ -90,6 +90,6 @@ func PodIPIndexFunc(obj interface{}) ([]string, error) {
 }
 
 // NewPodHandler constructs a pod handler given the relevant IAM Role Key
-func NewPodHandler(iamRoleKey string) *PodHandler {
-	return &PodHandler{iamRoleKey: iamRoleKey}
+func NewPodHandler(iamServiceAccountKey string) *PodHandler {
+	return &PodHandler{iamServiceAccountKey: iamServiceAccountKey}
 }

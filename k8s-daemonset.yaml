@@ -1,0 +1,63 @@
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  name: saassigner
+  namespace: kube-system
+  labels:
+    application: saassigner
+spec:
+  selector:
+    matchLabels:
+      application: saassigner
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        application: saassigner
+    spec:
+      priorityClassName: system-node-critical
+      tolerations:
+      - operator: Exists
+        effect: NoSchedule
+      - operator: Exists
+        effect: NoExecute
+      hostNetwork: true
+      containers:
+      - image: imduffy15/k8s-gke-service-account-assigner
+        name: saassigner
+        args:
+        - --verbose
+        - "--debug=true"
+        - "--iptables=true"
+        - "--host-ip=$(HOST_IP)"
+        - "--node=$(NODE_NAME)"
+        - "--default-service-account=default"
+        - "--default-scopes=https://www.googleapis.com/auth/devstorage.read_write,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append"
+        env:
+        - name: HOST_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        ports:
+        - containerPort: 8181
+          hostPort: 8181
+          name: http
+        securityContext:
+          privileged: true
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 8181
+          timeoutSeconds: 3
+        resources:
+          limits:
+            cpu: 100m
+            memory: 100Mi
+          requests:
+            cpu: 25m
+            memory: 25Mi

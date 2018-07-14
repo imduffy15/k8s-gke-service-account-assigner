@@ -1,4 +1,4 @@
-package kube2iam
+package saassigner
 
 import (
 	"testing"
@@ -6,7 +6,7 @@ import (
 	"k8s.io/client-go/pkg/api/v1"
 )
 
-func TestGetNamespaceRoleAnnotation(t *testing.T) {
+func TestGetNamespaceServiceAccountAnnotation(t *testing.T) {
 	var parseTests = []struct {
 		test       string
 		annotation string
@@ -38,7 +38,7 @@ func TestGetNamespaceRoleAnnotation(t *testing.T) {
 		t.Run(tt.test, func(t *testing.T) {
 			ns := &v1.Namespace{}
 			ns.Annotations = map[string]string{"namespaceKey": tt.annotation}
-			resp := GetNamespaceRoleAnnotation(ns, "namespaceKey")
+			resp := GetNamespaceServiceAccountAnnotation(ns, "namespaceKey")
 
 			if len(resp) != len(tt.expected) {
 				t.Errorf("Expected resp length of [%d] but received [%d]", len(tt.expected), len(resp))

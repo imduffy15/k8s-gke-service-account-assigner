@@ -2,23 +2,22 @@ package mappings
 
 import (
 	"fmt"
+	"strings"
 
-	glob "github.com/ryanuber/go-glob"
+	saassigner "github.com/imduffy15/k8s-gke-service-account-assigner"
 	log "github.com/sirupsen/logrus"
 	"k8s.io/client-go/pkg/api/v1"
-
-	"github.com/imduffy15/kube2iam"
-	"github.com/imduffy15/kube2iam/iam"
 )
 
-// RoleMapper handles relevant logic around associating IPs with a given IAM role
-type RoleMapper struct {
-	defaultRoleARN       string
-	iamRoleKey           string
-	namespaceKey         string
-	namespaceRestriction bool
-	iam                  *iam.Client
-	store                store
+// ServiceAccountMapper handles relevant logic around associating IPs with a given service account
+type ServiceAccountMapper struct {
+	defaultServiceAccount string
+	defaultScopes         string
+	iamServiceAccountKey  string
+	iamScopeKey           string
+	namespaceKey          string
+	namespaceRestriction  bool
+	store                 store
 }
 
 type store interface {
@@ -28,56 +27,77 @@ type store interface {
 	NamespaceByName(string) (*v1.Namespace, error)
 }
 
-// RoleMappingResult represents the relevant information for a given mapping request
-type RoleMappingResult struct {
-	Role      string
-	IP        string
-	Namespace string
+// ServiceAccountMappingResult represents the relevant information for a given mapping request
+type ServiceAccountMappingResult struct {
+	ServiceAccount string   `json:"service_account"`
+	IP             string   `json:"ip"`
+	Scopes         []string `json:"scopes"`
+	Namespace      string   `json:"namespace"`
 }
 
-// GetRoleMapping returns the normalized iam RoleMappingResult based on IP address
-func (r *RoleMapper) GetRoleMapping(IP string) (*RoleMappingResult, error) {
+// GetServiceAccountMapping returns the normalized iam ServiceAccountMappingResult based on IP address
+func (r *ServiceAccountMapper) GetServiceAccountMapping(IP string) (*ServiceAccountMappingResult, error) {
 	pod, err := r.store.PodByIP(IP)
 	// If attempting to get a Pod that maps to multiple IPs
 	if err != nil {
 		return nil, err
 	}
 
-	role, err := r.extractRoleARN(pod)
+	serviceAccount, err := r.extractServiceAccount(pod)
 	if err != nil {
 		return nil, err
 	}
 
-	// Determine if normalized role is allowed to be used in pod's namespace
-	if r.checkRoleForNamespace(role, pod.GetNamespace()) {
-		return &RoleMappingResult{Role: role, Namespace: pod.GetNamespace(), IP: IP}, nil
+	scopes, err := r.extractScopes(pod)
+	if err != nil {
+		return nil, err
 	}
 
-	return nil, fmt.Errorf("Role requested %s not valid for namespace of pod at %s with namespace %s", role, IP, pod.GetNamespace())
+	// Determine if service account is allowed to be used in pod's namespace
+	if r.checkServiceAccountForNamespace(serviceAccount, pod.GetNamespace()) {
+		return &ServiceAccountMappingResult{ServiceAccount: serviceAccount, Scopes: scopes, Namespace: pod.GetNamespace(), IP: IP}, nil
+	}
+
+	return nil, fmt.Errorf("Service Account requested %s not valid for namespace of pod at %s with namespace %s", serviceAccount, IP, pod.GetNamespace())
 }
 
 // extractQualifiedRoleName extracts a fully qualified ARN for a given pod,
 // taking into consideration the appropriate fallback logic and defaulting
-// logic along with the namespace role restrictions
-func (r *RoleMapper) extractRoleARN(pod *v1.Pod) (string, error) {
-	rawRoleName, annotationPresent := pod.GetAnnotations()[r.iamRoleKey]
+// logic along with the namespace service account restrictions
+func (r *ServiceAccountMapper) extractServiceAccount(pod *v1.Pod) (string, error) {
+	serviceAccount, annotationPresent := pod.GetAnnotations()[r.iamServiceAccountKey]
 
-	if !annotationPresent && r.defaultRoleARN == "" {
-		return "", fmt.Errorf("Unable to find role for IP %s", pod.Status.PodIP)
+	if !annotationPresent && r.defaultServiceAccount == "" {
+		return "", fmt.Errorf("Unable to find service account for IP %s", pod.Status.PodIP)
 	}
 
 	if !annotationPresent {
-		log.Warnf("Using fallback role for IP %s", pod.Status.PodIP)
-		rawRoleName = r.defaultRoleARN
+		log.Warnf("Using fallback service account for IP %s", pod.Status.PodIP)
+		serviceAccount = r.defaultServiceAccount
 	}
 
-	return r.iam.RoleARN(rawRoleName), nil
+	return serviceAccount, nil
 }
 
-// checkRoleForNamespace checks the 'database' for a role allowed in a namespace,
-// returns true if the role is found, otheriwse false
-func (r *RoleMapper) checkRoleForNamespace(roleArn string, namespace string) bool {
-	if !r.namespaceRestriction || roleArn == r.defaultRoleARN {
+func (r *ServiceAccountMapper) extractScopes(pod *v1.Pod) ([]string, error) {
+	scopes, annotationPresent := pod.GetAnnotations()[r.iamScopeKey]
+
+	if !annotationPresent && r.defaultScopes == "" {
+		return nil, fmt.Errorf("Unable to find scopes for IP %s", pod.Status.PodIP)
+	}
+
+	if !annotationPresent {
+		log.Warnf("Using fallback scopes for IP %s", pod.Status.PodIP)
+		scopes = r.defaultScopes
+	}
+
+	return strings.Split(scopes, ","), nil
+}
+
+// checkServiceAccountForNamespace checks the 'database' for a service account allowed in a namespace,
+// returns true if the service account is found, otheriwse false
+func (r *ServiceAccountMapper) checkServiceAccountForNamespace(serviceAccount string, namespace string) bool {
+	if !r.namespaceRestriction || serviceAccount == r.defaultServiceAccount {
 		return true
 	}
 
@@ -87,57 +107,57 @@ func (r *RoleMapper) checkRoleForNamespace(roleArn string, namespace string) boo
 		return false
 	}
 
-	ar := kube2iam.GetNamespaceRoleAnnotation(ns, r.namespaceKey)
-	for _, rolePattern := range ar {
-		normalized := r.iam.RoleARN(rolePattern)
-		if glob.Glob(normalized, roleArn) {
-			log.Debugf("Role: %s matched %s on namespace:%s.", roleArn, rolePattern, namespace)
+	ar := saassigner.GetNamespaceServiceAccountAnnotation(ns, r.namespaceKey)
+	for _, serviceAccountPattern := range ar {
+		if serviceAccountPattern == serviceAccount {
+			log.Debugf("Service account: %s matched %s on namespace:%s.", serviceAccount, serviceAccountPattern, namespace)
 			return true
 		}
 	}
-	log.Warnf("Role: %s on namespace: %s not found.", roleArn, namespace)
+	log.Warnf("Service account: %s on namespace: %s not found.", serviceAccount, namespace)
 	return false
 }
 
-// DumpDebugInfo outputs all the roles by IP address.
-func (r *RoleMapper) DumpDebugInfo() map[string]interface{} {
+// DumpDebugInfo outputs all the serviceAccounts by IP address.
+func (r *ServiceAccountMapper) DumpDebugInfo() map[string]interface{} {
 	output := make(map[string]interface{})
-	rolesByIP := make(map[string]string)
+	serviceAccountsByIP := make(map[string]string)
 	namespacesByIP := make(map[string]string)
-	rolesByNamespace := make(map[string][]string)
+	serviceAccountsByNamespace := make(map[string][]string)
 
 	for _, ip := range r.store.ListPodIPs() {
 		// When pods have `hostNetwork: true` they share an IP and we receive an error
 		if pod, err := r.store.PodByIP(ip); err == nil {
 			namespacesByIP[ip] = pod.Namespace
-			if role, ok := pod.GetAnnotations()[r.iamRoleKey]; ok {
-				rolesByIP[ip] = role
+			if serviceAccount, ok := pod.GetAnnotations()[r.iamServiceAccountKey]; ok {
+				serviceAccountsByIP[ip] = serviceAccount
 			} else {
-				rolesByIP[ip] = ""
+				serviceAccountsByIP[ip] = ""
 			}
 		}
 	}
 
 	for _, namespaceName := range r.store.ListNamespaces() {
 		if namespace, err := r.store.NamespaceByName(namespaceName); err == nil {
-			rolesByNamespace[namespace.GetName()] = kube2iam.GetNamespaceRoleAnnotation(namespace, r.namespaceKey)
+			serviceAccountsByNamespace[namespace.GetName()] = saassigner.GetNamespaceServiceAccountAnnotation(namespace, r.namespaceKey)
 		}
 	}
 
-	output["rolesByIP"] = rolesByIP
+	output["serviceAccountsByIP"] = serviceAccountsByIP
 	output["namespaceByIP"] = namespacesByIP
-	output["rolesByNamespace"] = rolesByNamespace
+	output["serviceAccountsByNamespace"] = serviceAccountsByNamespace
 	return output
 }
 
-// NewRoleMapper returns a new RoleMapper for use.
-func NewRoleMapper(roleKey string, defaultRole string, namespaceRestriction bool, namespaceKey string, iamInstance *iam.Client, kubeStore store) *RoleMapper {
-	return &RoleMapper{
-		defaultRoleARN:       iamInstance.RoleARN(defaultRole),
-		iamRoleKey:           roleKey,
-		namespaceKey:         namespaceKey,
-		namespaceRestriction: namespaceRestriction,
-		iam:                  iamInstance,
-		store:                kubeStore,
+// NewServiceAccountMapper returns a new ServiceAccountMapper for use.
+func NewServiceAccountMapper(serviceAccountKey string, scopeKey string, defaultServiceAccount string, defaultScopes string, namespaceRestriction bool, namespaceKey string, kubeStore store) *ServiceAccountMapper {
+	return &ServiceAccountMapper{
+		defaultServiceAccount: defaultServiceAccount,
+		defaultScopes:         defaultScopes,
+		iamServiceAccountKey:  serviceAccountKey,
+		iamScopeKey:           scopeKey,
+		namespaceKey:          namespaceKey,
+		namespaceRestriction:  namespaceRestriction,
+		store:                 kubeStore,
 	}
 }

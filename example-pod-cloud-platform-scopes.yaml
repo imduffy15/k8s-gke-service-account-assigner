@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: k8s-gke-service-account-assigner-debug-shell-cloud-platform
+  labels:
+    name: k8s-gke-service-account-assigner-debug-shell-cloud-platform
+  annotations:
+    accounts.google.com/service-account: "default"
+    accounts.google.com/scopes: "https://www.googleapis.com/auth/cloud-platform"
+spec:
+  restartPolicy: Never
+  containers:
+    - image: imduffy15/docker-gcloud
+      imagePullPolicy: Always
+      name: k8s-gke-service-account-assigner-debug-shell
+      tty: true

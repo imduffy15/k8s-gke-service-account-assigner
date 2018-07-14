@@ -1,4 +1,4 @@
-package kube2iam
+package saassigner
 
 import (
 	"encoding/json"
@@ -30,9 +30,9 @@ func (h *NamespaceHandler) OnAdd(obj interface{}) {
 	logger := log.WithFields(h.namespaceFields(ns))
 	logger.Debug("Namespace OnAdd")
 
-	roles := GetNamespaceRoleAnnotation(ns, h.namespaceKey)
-	for _, role := range roles {
-		logger.WithField("ns.role", role).Info("Discovered role on namespace (OnAdd)")
+	serviceAccounts := GetNamespaceServiceAccountAnnotation(ns, h.namespaceKey)
+	for _, serviceAccount := range serviceAccounts {
+		logger.WithField("ns.serviceaccount", serviceAccount).Info("Discovered service account on namespace (OnAdd)")
 	}
 }
 
@@ -46,10 +46,10 @@ func (h *NamespaceHandler) OnUpdate(oldObj, newObj interface{}) {
 	logger := log.WithFields(h.namespaceFields(nns))
 	logger.Debug("Namespace OnUpdate")
 
-	roles := GetNamespaceRoleAnnotation(nns, h.namespaceKey)
+	serviceAccounts := GetNamespaceServiceAccountAnnotation(nns, h.namespaceKey)
 
-	for _, role := range roles {
-		logger.WithField("ns.role", role).Info("Discovered role on namespace (OnUpdate)")
+	for _, serviceAccount := range serviceAccounts {
+		logger.WithField("ns.serviceaccount", serviceAccount).Info("Discovered service account on namespace (OnUpdate)")
 	}
 }
 
@@ -63,14 +63,14 @@ func (h *NamespaceHandler) OnDelete(obj interface{}) {
 	log.WithFields(h.namespaceFields(ns)).Info("Deleting namespace (OnDelete)")
 }
 
-// GetNamespaceRoleAnnotation reads the "iam.amazonaws.com/allowed-roles" annotation off a namespace
-// and splits them as a JSON list (["role1", "role2", "role3"])
-func GetNamespaceRoleAnnotation(ns *v1.Namespace, namespaceKey string) []string {
+// GetNamespaceServiceAccountAnnotation reads the "accounts.google.com/allowed-service-accounts" annotation off a namespace
+// and splits them as a JSON list (["serviceaccount1", "serviceaccount2", "serviceaccount3"])
+func GetNamespaceServiceAccountAnnotation(ns *v1.Namespace, namespaceKey string) []string {
 	rolesString := ns.GetAnnotations()[namespaceKey]
 	if rolesString != "" {
 		var decoded []string
 		if err := json.Unmarshal([]byte(rolesString), &decoded); err != nil {
-			log.Errorf("Unable to decode roles on namespace %s ( role annotation is '%s' ) with error: %s", ns.Name, rolesString, err)
+			log.Errorf("Unable to decode roles on namespace %s ( service account annotation is '%s' ) with error: %s", ns.Name, rolesString, err)
 		}
 		return decoded
 	}
