@@ -1,111 +1,130 @@
 package iam
 
 import (
-	"errors"
+	"context"
+	"encoding/json"
 	"fmt"
-	"hash/fnv"
-	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/ec2metadata"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/sts"
+	"github.com/imduffy15/k8s-gke-service-account-assigner/mappings"
 	"github.com/karlseguin/ccache"
+	"golang.org/x/oauth2/google"
+	iamcredentials "google.golang.org/api/iamcredentials/v1"
 )
 
-var cache = ccache.New(ccache.Configure())
+var accessTokenCache = ccache.New(ccache.Configure())
+
+var idTokenCache = ccache.New(ccache.Configure())
 
 const (
-	maxSessNameLength = 64
-	ttl               = time.Minute * 15
+	ttl = time.Minute * 50
 )
 
 // Client represents an IAM client.
 type Client struct {
-	BaseARN string
 }
 
-// Credentials represent the security Credentials response.
+// Credentials represent an OAuth Access token
 type Credentials struct {
-	AccessKeyID     string `json:"AccessKeyId"`
-	Code            string
-	Expiration      string
-	LastUpdated     string
-	SecretAccessKey string
-	Token           string
-	Type            string
+	AccessToken string `json:"access_token"`
+	ExpiresAt   int    `json:"expires_in"`
+	TokenType   string `json:"token_type"`
 }
 
-func getHash(text string) string {
-	h := fnv.New32a()
-	_, err := h.Write([]byte(text))
+const (
+	tokenType = "Bearer"
+)
+
+// ImpersonateServiceAccount returns a service account access token using The IAM Credentials API.
+func (iam *Client) ImpersonateServiceAccount(serviceAccountMappingResult *mappings.ServiceAccountMappingResult) (*Credentials, error) {
+	serviceAccountMappingResultStr, err := json.Marshal(serviceAccountMappingResult)
 	if err != nil {
-		return text
+		return nil, err
 	}
-	return fmt.Sprintf("%x", h.Sum32())
-}
+	item, err := accessTokenCache.Fetch(string(serviceAccountMappingResultStr), ttl, func() (interface{}, error) {
+		ctx := context.Background()
 
-// GetInstanceIAMRole get instance IAM role from metadata service.
-func GetInstanceIAMRole() (string, error) {
-	sess, err := session.NewSession()
-	if err != nil {
-		return "", err
-	}
-	metadata := ec2metadata.New(sess)
-	if !metadata.Available() {
-		return "", errors.New("EC2 Metadata is not available, are you running on EC2?")
-	}
-	iamRole, err := metadata.GetMetadata("iam/security-credentials/")
-	if err != nil {
-		return "", err
-	}
-	if iamRole == "" || err != nil {
-		return "", errors.New("EC2 Metadata didn't returned any IAM Role")
-	}
-	return iamRole, nil
-}
-
-func sessionName(roleARN, remoteIP string) string {
-	idx := strings.LastIndex(roleARN, "/")
-	name := fmt.Sprintf("%s-%s", getHash(remoteIP), roleARN[idx+1:])
-	return fmt.Sprintf("%.[2]*[1]s", name, maxSessNameLength)
-}
-
-// AssumeRole returns an IAM role Credentials using AWS STS.
-func (iam *Client) AssumeRole(roleARN, remoteIP string) (*Credentials, error) {
-	item, err := cache.Fetch(roleARN, ttl, func() (interface{}, error) {
-		sess, err := session.NewSession()
-		if err != nil {
-			return nil, err
-		}
-		svc := sts.New(sess, &aws.Config{LogLevel: aws.LogLevel(2)})
-		resp, err := svc.AssumeRole(&sts.AssumeRoleInput{
-			DurationSeconds: aws.Int64(int64(ttl.Seconds() * 2)),
-			RoleArn:         aws.String(roleARN),
-			RoleSessionName: aws.String(sessionName(roleARN, remoteIP)),
-		})
+		client, err := google.DefaultClient(ctx, iamcredentials.CloudPlatformScope)
 		if err != nil {
 			return nil, err
 		}
 
-		return &Credentials{
-			AccessKeyID:     *resp.Credentials.AccessKeyId,
-			Code:            "Success",
-			Expiration:      resp.Credentials.Expiration.Format("2006-01-02T15:04:05Z"),
-			LastUpdated:     time.Now().Format("2006-01-02T15:04:05Z"),
-			SecretAccessKey: *resp.Credentials.SecretAccessKey,
-			Token:           *resp.Credentials.SessionToken,
-			Type:            "AWS-HMAC",
-		}, nil
+		iamCredentialsClient, err := iamcredentials.New(client)
+		if err != nil {
+			return nil, err
+		}
+
+		generateAccessTokenResponse, err := iamCredentialsClient.Projects.ServiceAccounts.GenerateAccessToken(
+			fmt.Sprintf("projects/-/serviceAccounts/%s", serviceAccountMappingResult.ServiceAccount),
+			&iamcredentials.GenerateAccessTokenRequest{
+				Scope: serviceAccountMappingResult.Scopes,
+			},
+		).Do()
+
+		if err != nil {
+			return nil, err
+		}
+
+		return generateAccessTokenResponse, nil
 	})
 	if err != nil {
 		return nil, err
 	}
-	return item.Value().(*Credentials), nil
+
+	accessToken := item.Value().(*iamcredentials.GenerateAccessTokenResponse)
+
+	expiresTime, err := time.Parse(time.RFC3339, accessToken.ExpireTime)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Credentials{
+		AccessToken: accessToken.AccessToken,
+		ExpiresAt:   int(time.Until(expiresTime).Seconds()),
+		TokenType:   tokenType,
+	}, nil
+}
+
+// GenerateIDToken returns a service account id token for for the given audience using The IAM Credentials API.
+func (iam *Client) GenerateIDToken(serviceAccountMappingResult *mappings.ServiceAccountMappingResult, audience string) (string, error) {
+	serviceAccountMappingResultStr, err := json.Marshal(serviceAccountMappingResult)
+	if err != nil {
+		return "", err
+	}
+	item, err := idTokenCache.Fetch(string(serviceAccountMappingResultStr), ttl, func() (interface{}, error) {
+		ctx := context.Background()
+
+		client, err := google.DefaultClient(ctx, iamcredentials.CloudPlatformScope)
+		if err != nil {
+			return nil, err
+		}
+
+		iamCredentialsClient, err := iamcredentials.New(client)
+		if err != nil {
+			return nil, err
+		}
+
+		generateIDTokenResponse, err := iamCredentialsClient.Projects.ServiceAccounts.GenerateIdToken(
+			fmt.Sprintf("projects/-/serviceAccounts/%s", serviceAccountMappingResult.ServiceAccount),
+			&iamcredentials.GenerateIdTokenRequest{
+				Audience: audience,
+			},
+		).Do()
+
+		if err != nil {
+			return nil, err
+		}
+
+		return generateIDTokenResponse.Token, nil
+	})
+	if err != nil {
+		return "", err
+	}
+
+	return item.Value().(string), nil
 }
 
 // NewClient returns a new IAM client.
-func NewClient(baseARN string) *Client {
-	return &Client{BaseARN: baseARN}
+func NewClient() *Client {
+	return &Client{}
 }

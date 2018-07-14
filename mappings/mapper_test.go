@@ -5,23 +5,22 @@ import (
 	"testing"
 
 	"k8s.io/client-go/pkg/api/v1"
-
-	"github.com/imduffy15/kube2iam/iam"
 )
 
 const (
-	defaultBaseRole = "arn:aws:iam::123456789012:role/"
-	roleKey         = "roleKey"
-	namespaceKey    = "namespaceKey"
+	serviceAccountKey = "serviceAccountKey"
+	scopeKey          = "scopeKey"
+	namespaceKey      = "namespaceKey"
 )
 
-func TestExtractRoleARN(t *testing.T) {
-	var roleExtractionTests = []struct {
-		test        string
-		annotations map[string]string
-		defaultRole string
-		expectedARN string
-		expectError bool
+func TestExtractServiceAccount(t *testing.T) {
+	var serviceAccountExtractionTests = []struct {
+		test                  string
+		annotations           map[string]string
+		defaultServiceAccount string
+		defaultScopes         string
+		expected              string
+		expectError           bool
 	}{
 		{
 			test:        "No default, no annotation",
@@ -30,45 +29,41 @@ func TestExtractRoleARN(t *testing.T) {
 		},
 		{
 			test:        "No default, has annotation",
-			annotations: map[string]string{roleKey: "explicit-role"},
-			expectedARN: "arn:aws:iam::123456789012:role/explicit-role",
+			annotations: map[string]string{serviceAccountKey: "explicit-service-account"},
+			expected:    "explicit-service-account",
 		},
 		{
-			test:        "Default present, no annotations",
-			annotations: map[string]string{},
-			defaultRole: "explicit-default-role",
-			expectedARN: "arn:aws:iam::123456789012:role/explicit-default-role",
+			test:                  "Default present, no annotations",
+			annotations:           map[string]string{},
+			defaultServiceAccount: "explicit-default-service-account",
+			defaultScopes:         "default-scope",
+			expected:              "explicit-default-service-account",
 		},
 		{
-			test:        "Default present, has annotations",
-			annotations: map[string]string{roleKey: "something"},
-			defaultRole: "explicit-default-role",
-			expectedARN: "arn:aws:iam::123456789012:role/something",
+			test:                  "Default present, has annotations",
+			annotations:           map[string]string{serviceAccountKey: "something"},
+			defaultServiceAccount: "explicit-default-service-account",
+			defaultScopes:         "default-scope",
+			expected:              "something",
 		},
 		{
-			test:        "Default present, has full arn annotations",
-			annotations: map[string]string{roleKey: "arn:aws:iam::999999999999:role/explicit-arn"},
-			defaultRole: "explicit-default-role",
-			expectedARN: "arn:aws:iam::999999999999:role/explicit-arn",
-		},
-		{
-			test:        "Default present, has different annotations",
-			annotations: map[string]string{"nonMatchingAnnotation": "something"},
-			defaultRole: "explicit-default-role",
-			expectedARN: "arn:aws:iam::123456789012:role/explicit-default-role",
+			test:                  "Default present, has different annotations",
+			annotations:           map[string]string{"nonMatchingAnnotation": "something"},
+			defaultServiceAccount: "explicit-default-service-account",
+			defaultScopes:         "default-scope",
+			expected:              "explicit-default-service-account",
 		},
 	}
-	for _, tt := range roleExtractionTests {
+	for _, tt := range serviceAccountExtractionTests {
 		t.Run(tt.test, func(t *testing.T) {
-			rp := RoleMapper{}
-			rp.iamRoleKey = "roleKey"
-			rp.defaultRoleARN = tt.defaultRole
-			rp.iam = &iam.Client{BaseARN: defaultBaseRole}
+			rp := ServiceAccountMapper{}
+			rp.iamServiceAccountKey = "serviceAccountKey"
+			rp.defaultServiceAccount = tt.defaultServiceAccount
 
 			pod := &v1.Pod{}
 			pod.Annotations = tt.annotations
 
-			resp, err := rp.extractRoleARN(pod)
+			resp, err := rp.extractServiceAccount(pod)
 			if tt.expectError && err == nil {
 				t.Error("Expected error however didn't recieve one")
 				return
@@ -77,115 +72,94 @@ func TestExtractRoleARN(t *testing.T) {
 				t.Errorf("Didn't expect error but recieved %s", err)
 				return
 			}
-			if resp != tt.expectedARN {
-				t.Errorf("Response [%s] did not equal expected [%s]", resp, tt.expectedARN)
+			if resp != tt.expected {
+				t.Errorf("Response [%s] did not equal expected [%s]", resp, tt.expected)
 				return
 			}
 		})
 	}
 }
 
-func TestCheckRoleForNamespace(t *testing.T) {
-	var roleCheckTests = []struct {
-		test                 string
-		namespaceRestriction bool
-		defaultArn           string
-		namespace            string
-		namespaceAnnotations map[string]string
-		roleARN              string
-		expectedResult       bool
+func TestCheckServiceAccountForNamespace(t *testing.T) {
+	var serviceAccountCheckTests = []struct {
+		test                  string
+		namespaceRestriction  bool
+		defaultServiceAccount string
+		defaultScopes         string
+		namespace             string
+		namespaceAnnotations  map[string]string
+		serviceAccount        string
+		expectedResult        bool
 	}{
 		{
 			test:                 "No restrictions",
 			namespaceRestriction: false,
-			roleARN:              "arn:aws:iam::123456789012:role/explicit-role",
+			serviceAccount:       "explicit-service-account",
 			namespace:            "default",
 			expectedResult:       true,
 		},
 		{
-			test:                 "Restrictions enabled, default partial",
-			namespaceRestriction: true,
-			defaultArn:           "default-role",
-			roleARN:              "arn:aws:iam::123456789012:role/default-role",
-			expectedResult:       true,
+			test:                  "Restrictions enabled, default partial",
+			namespaceRestriction:  true,
+			defaultServiceAccount: "default-service-account",
+			defaultScopes:         "default-scope",
+			serviceAccount:        "default-service-account",
+			expectedResult:        true,
 		},
 		{
-			test:                 "Restrictions enabled, default full arn",
-			namespaceRestriction: true,
-			defaultArn:           "arn:aws:iam::123456789012:role/default-role",
-			roleARN:              "arn:aws:iam::123456789012:role/default-role",
-			expectedResult:       true,
+			test:                  "Restrictions enabled, default full arn",
+			namespaceRestriction:  true,
+			defaultServiceAccount: "default-service-account",
+			defaultScopes:         "default-scope",
+			serviceAccount:        "default-service-account",
+			expectedResult:        true,
 		},
 		{
-			test:                 "Restrictions enabled, partial arn in annotation",
-			namespaceRestriction: true,
-			defaultArn:           "arn:aws:iam::123456789012:role/default-role",
-			roleARN:              "arn:aws:iam::123456789012:role/explicit-role",
-			namespace:            "default",
-			namespaceAnnotations: map[string]string{namespaceKey: "[\"explicit-role\"]"},
-			expectedResult:       true,
+			test:                  "Restrictions enabled",
+			namespaceRestriction:  true,
+			defaultServiceAccount: "default-service-account",
+			defaultScopes:         "default-scope",
+			serviceAccount:        "explicit-service-account",
+			namespace:             "default",
+			namespaceAnnotations:  map[string]string{namespaceKey: "[\"explicit-service-account\"]"},
+			expectedResult:        true,
 		},
 		{
-			test:                 "Restrictions enabled, partial glob in annotation",
-			namespaceRestriction: true,
-			defaultArn:           "arn:aws:iam::123456789012:role/default-role",
-			roleARN:              "arn:aws:iam::123456789012:role/path/explicit-role",
-			namespace:            "default",
-			namespaceAnnotations: map[string]string{namespaceKey: "[\"path/*\"]"},
-			expectedResult:       true,
-		},
-		{
-			test:                 "Restrictions enabled, full arn in annotation",
-			namespaceRestriction: true,
-			defaultArn:           "arn:aws:iam::123456789012:role/default-role",
-			roleARN:              "arn:aws:iam::123456789012:role/explicit-role",
-			namespace:            "default",
-			namespaceAnnotations: map[string]string{namespaceKey: "[\"arn:aws:iam::123456789012:role/explicit-role\"]"},
-			expectedResult:       true,
-		},
-		{
-			test:                 "Restrictions enabled, full arn with glob in annotation",
-			namespaceRestriction: true,
-			defaultArn:           "arn:aws:iam::123456789012:role/default-role",
-			roleARN:              "arn:aws:iam::123456789012:role/path/explicit-role",
-			namespace:            "default",
-			namespaceAnnotations: map[string]string{namespaceKey: "[\"arn:aws:iam::123456789012:role/path/*-role\"]"},
-			expectedResult:       true,
-		},
-		{
-			test:                 "Restrictions enabled, full arn not in annotation",
-			namespaceRestriction: true,
-			defaultArn:           "arn:aws:iam::123456789012:role/default-role",
-			roleARN:              "arn:aws:iam::123456789012:role/test-role",
-			namespace:            "default",
-			namespaceAnnotations: map[string]string{namespaceKey: "[\"arn:aws:iam::123456789012:role/explicit-role\"]"},
-			expectedResult:       false,
+			test:                  "Restrictions enabled, service account not in annotation",
+			namespaceRestriction:  true,
+			defaultServiceAccount: "default-service-account",
+			defaultScopes:         "default-scope",
+			serviceAccount:        "test-service-account",
+			namespace:             "default",
+			namespaceAnnotations:  map[string]string{namespaceKey: "[\"explicit-service-account\"]"},
+			expectedResult:        false,
 		},
 		{
 			test:                 "Restrictions enabled, no annotations",
 			namespaceRestriction: true,
-			roleARN:              "arn:aws:iam::123456789012:role/explicit-role",
+			serviceAccount:       "explicit-service-account",
 			namespace:            "default",
 			namespaceAnnotations: map[string]string{namespaceKey: ""},
 			expectedResult:       false,
 		},
 	}
 
-	for _, tt := range roleCheckTests {
+	for _, tt := range serviceAccountCheckTests {
 		t.Run(tt.test, func(t *testing.T) {
-			rp := NewRoleMapper(
-				roleKey,
-				tt.defaultArn,
+			rp := NewServiceAccountMapper(
+				serviceAccountKey,
+				scopeKey,
+				tt.defaultServiceAccount,
+				tt.defaultScopes,
 				tt.namespaceRestriction,
 				namespaceKey,
-				&iam.Client{BaseARN: defaultBaseRole},
 				&storeMock{
 					namespace:   tt.namespace,
 					annotations: tt.namespaceAnnotations,
 				},
 			)
 
-			resp := rp.checkRoleForNamespace(tt.roleARN, tt.namespace)
+			resp := rp.checkServiceAccountForNamespace(tt.serviceAccount, tt.namespace)
 			if resp != tt.expectedResult {
 				t.Errorf("Expected [%t] for test but recieved [%t]", tt.expectedResult, resp)
 			}

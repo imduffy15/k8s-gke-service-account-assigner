@@ -1,5 +1,5 @@
 ORG_PATH="github.com/imduffy15"
-BINARY_NAME := kube2iam
+BINARY_NAME := k8s-gke-service-account-assigner
 REPO_PATH="$(ORG_PATH)/$(BINARY_NAME)"
 VERSION_VAR := $(REPO_PATH)/version.Version
 GIT_VAR := $(REPO_PATH)/version.GitCommit
@@ -22,6 +22,8 @@ setup:
 	go get -v -u github.com/githubnemo/CompileDaemon
 	go get -v -u github.com/alecthomas/gometalinter
 	go get -v -u github.com/jstemmer/go-junit-report
+	go get -v -u golang.org/x/tools/cmd/goimports
+	go get -v github.com/dnephin/govet
 	go get -v github.com/mattn/goveralls
 	gometalinter --install --update
 	glide install --strip-vendor
@@ -76,7 +78,7 @@ check-all:
 		--dupl-threshold=50
 
 watch:
-	CompileDaemon -color=true -build "make test"
+	CompileDaemon -color=true -build "make cross" --exclude-dir=".git" -exclude-dir="vendor"
 
 cross:
 	CGO_ENABLED=0 GOOS=linux go build -o build/bin/linux/$(BINARY_NAME) $(GOBUILD_VERSION_ARGS) -a -installsuffix cgo  github.com/imduffy15/$(BINARY_NAME)/cmd
@@ -86,7 +88,7 @@ docker: cross
 
 docker-dev: docker
 	docker tag $(IMAGE_NAME):$(GIT_HASH) $(IMAGE_NAME):dev
-	docker push $(IMAGE_NAME):dev
+	# docker push $(IMAGE_NAME):dev
 
 release: check test docker
 	docker push $(IMAGE_NAME):$(GIT_HASH)

@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: k8s-gke-service-account-assigner-debug-shell-storage-scopes
+  labels:
+    name: k8s-gke-service-account-assigner-debug-shell-storage-scopes
+  annotations:
+    accounts.google.com/scopes: "https://www.googleapis.com/auth/devstorage.read_only"
+spec:
+  restartPolicy: Never
+  containers:
+    - image: imduffy15/docker-gcloud
+      imagePullPolicy: Always
+      name: k8s-gke-service-account-assigner-debug-shell
+      tty: true

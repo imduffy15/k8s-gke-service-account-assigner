@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/imduffy15/kube2iam"
+	saassigner "github.com/imduffy15/k8s-gke-service-account-assigner"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/v1"
@@ -46,7 +46,7 @@ func (k8s *Client) WatchForPods(podEventLogger cache.ResourceEventHandler) cache
 		&v1.Pod{},
 		resyncPeriod,
 		podEventLogger,
-		cache.Indexers{podIPIndexName: kube2iam.PodIPIndexFunc},
+		cache.Indexers{podIPIndexName: saassigner.PodIPIndexFunc},
 	)
 	go k8s.podController.Run(wait.NeverStop)
 	return k8s.podController.HasSynced
@@ -64,7 +64,7 @@ func (k8s *Client) WatchForNamespaces(nsEventLogger cache.ResourceEventHandler) 
 		&v1.Namespace{},
 		resyncPeriod,
 		nsEventLogger,
-		cache.Indexers{namespaceIndexName: kube2iam.NamespaceIndexFunc},
+		cache.Indexers{namespaceIndexName: saassigner.NamespaceIndexFunc},
 	)
 	go k8s.namespaceController.Run(wait.NeverStop)
 	return k8s.namespaceController.HasSynced

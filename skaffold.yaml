@@ -1,0 +1,10 @@
+apiVersion: skaffold/v1alpha2
+kind: Config
+build:
+  artifacts:
+  - imageName: imduffy15/k8s-gke-service-account-assigner
+deploy:
+  kubectl:
+    manifests:
+      - k8s-*
+
