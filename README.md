@@ -1,8 +1,7 @@
 [![Build Status](https://travis-ci.org/imduffy15/k8s-gke-service-account-assigner.svg?branch=master)](https://travis-ci.org/imduffy15/k8s-gke-service-account-assigner)
 ![GitHub tag](https://img.shields.io/github/tag/imduffy15/k8s-gke-service-account-assigner.svg?maxAge=86400)
 ![Docker Pulls](https://img.shields.io/docker/pulls/imduffy15/k8s-gke-service-account-assigner.svg)
-[![Go Report Card](https://goreportcard.com/badge/github.com/imduffy15/k8s-gke-service-account-assigner)](https://goreportcard.com/report/github.com/imduffy15/k8s-gke-service-account-assigner)
-[![license](https://img.shields.io/github/license/imduffy15/k8s-gke-service-account-assigner.svg)](https://github.com/imduffy15/k8s-gke-service-account-assigner/blob/master/LICENSE)
+[![Go Report Card](https://goreportcard.com/badge/github.com/imduffy15/k8s-gke-service-account-assigner?maxAge=86400)](https://goreportcard.com/report/github.com/imduffy15/k8s-gke-service-account-assigner)
 
 # k8s-gke-service-account-assigner
 
