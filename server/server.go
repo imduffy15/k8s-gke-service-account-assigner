@@ -323,7 +323,7 @@ func (s *Server) validateServiceAccountRequest(logger *log.Entry, w http.Respons
 
 		w.WriteHeader(http.StatusForbidden)
 		w.Header().Set("Content-Type", "application/json")
-		if err = json.NewEncoder(w).Encode(&ErrorResponse{
+		if err := json.NewEncoder(w).Encode(&ErrorResponse{
 			Error:       "invalid_request",
 			Description: "Service account not enabled on this instance",
 		}); err != nil {
