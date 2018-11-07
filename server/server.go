@@ -221,8 +221,10 @@ func (s *Server) serviceAccountsHandler(logger *log.Entry, w http.ResponseWriter
 }
 
 func (s *Server) redirect(logger *log.Entry, w http.ResponseWriter, r *http.Request) {
+	correctedPath := fmt.Sprintf("%s/", r.URL.Path)
+	w.Header().Set("Location", correctedPath)
 	w.WriteHeader(http.StatusMovedPermanently)
-	write(logger, w, fmt.Sprintf("%s/", r.URL.Path))
+	write(logger, w, correctedPath)
 }
 
 func (s *Server) serviceAccountTokenHandler(logger *log.Entry, w http.ResponseWriter, r *http.Request) {
