@@ -100,7 +100,7 @@ iptables \
 ```
 
 This rule can be added automatically by setting `--iptables=true`, setting the `HOST_IP` environment
-variable, and running the container in a privileged security context.
+variable, and running the container in a privileged security context (or more granularly with `CAP_NET_ADMIN` and `CAP_NET_RAW`).
 
 ### kubernetes annotation
 
