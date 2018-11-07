@@ -141,9 +141,12 @@ kind: Namespace
 metadata:
   annotations:
     accounts.google.com/allowed-service-accounts: |
-      ["service-account"]
+      ["<PROJECT-ID>-compute@developer.gserviceaccount.com"]
   name: default
 ```
+
+The entries in the array may also be [glob patterns](https://golang.org/pkg/path/filepath/#Match).
+For example, you could match any user-managed service account for a project using `["*@<PROJECT-ID>.iam.gserviceaccount.com"]`.
 
 ### RBAC Setup
 

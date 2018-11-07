@@ -2,6 +2,7 @@ package mappings
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	saassigner "github.com/imduffy15/k8s-gke-service-account-assigner"
@@ -109,7 +110,7 @@ func (r *ServiceAccountMapper) checkServiceAccountForNamespace(serviceAccount st
 
 	ar := saassigner.GetNamespaceServiceAccountAnnotation(ns, r.namespaceKey)
 	for _, serviceAccountPattern := range ar {
-		if serviceAccountPattern == serviceAccount {
+		if match, err := filepath.Match(serviceAccountPattern, serviceAccount); err == nil && match {
 			log.Debugf("Service account: %s matched %s on namespace:%s.", serviceAccount, serviceAccountPattern, namespace)
 			return true
 		}
