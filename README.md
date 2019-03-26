@@ -217,6 +217,7 @@ Usage of ./k8s-gke-service-account-assigner:
       --debug                               Enable debug features
       --default-scopes string               Fallback scopes to use when annotation is not set
       --default-service-account string      Fallback service account to use when annotation is not set
+      --enable-metadata-proxy               Send traffic to next-hop proxy
       --host-interface string               Host interface for proxying google compute engine metadata (default "eth0")
       --host-ip string                      IP address of host
       --iam-role-key string                 Pod annotation key used to retrieve the IAM role (default "accounts.google.com/service-account")
@@ -225,12 +226,17 @@ Usage of ./k8s-gke-service-account-assigner:
       --log-format string                   Log format (text/json) (default "text")
       --log-level string                    Log level (default "info")
       --metadata-addr string                Address for the google compute engine metadata (default "169.254.169.254")
+      --metadata-proxy-addr string          Address for the next-hop proxy, defaults to GKE's metadata-proxy location (default "127.0.0.1:988")
       --namespace-key string                Namespace annotation key used to retrieve the service accounts allowed (value in annotation should be json array) (default "accounts.google.com/allowed-service-accounts")
       --namespace-restrictions              Enable namespace restrictions
       --node string                         Name of the node where k8s-gke-service-account-assigner is running
       --verbose                             Verbose
       --version                             Print the version and exits
 ```
+
+### Usage with GKE Metadata Concealment
+
+[GKE's Metadata concealment](https://cloud.google.com/kubernetes-engine/docs/how-to/protecting-cluster-metadata#concealment) protects some potentially sensitive system metadata from user workloads running on your cluster. It does so by deploying [k8s-metadata-proxy](https://github.com/GoogleCloudPlatform/k8s-metadata-proxy) and routing traffic to metadata service via this proxy. K8s-gke-service-account-assigner will take precedence, by putting its iptables rule before the k8s-metadata-proxy one, and therefore effectively bypassing it. If you want to use both, set `--enable-metadata-proxy`, in which case the traffic will we sent to the `--metadata-proxy-addr` (defaults to `127.0.0.1:988`, GKE's metadata-proxy default location).
 
 ## Development loop
 

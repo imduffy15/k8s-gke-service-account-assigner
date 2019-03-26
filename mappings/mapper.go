@@ -59,7 +59,7 @@ func (r *ServiceAccountMapper) GetServiceAccountMapping(IP string) (*ServiceAcco
 		return &ServiceAccountMappingResult{ServiceAccount: serviceAccount, Scopes: scopes, Namespace: pod.GetNamespace(), IP: IP}, nil
 	}
 
-	return nil, fmt.Errorf("Service Account requested %s not valid for namespace of pod at %s with namespace %s", serviceAccount, IP, pod.GetNamespace())
+	return nil, fmt.Errorf("service account requested %s not valid for namespace of pod at %s with namespace %s", serviceAccount, IP, pod.GetNamespace())
 }
 
 // extractQualifiedRoleName extracts a fully qualified ARN for a given pod,
@@ -69,7 +69,7 @@ func (r *ServiceAccountMapper) extractServiceAccount(pod *v1.Pod) (string, error
 	serviceAccount, annotationPresent := pod.GetAnnotations()[r.iamServiceAccountKey]
 
 	if !annotationPresent && r.defaultServiceAccount == "" {
-		return "", fmt.Errorf("Unable to find service account for IP %s", pod.Status.PodIP)
+		return "", fmt.Errorf("unable to find service account for IP %s", pod.Status.PodIP)
 	}
 
 	if !annotationPresent {
@@ -84,7 +84,7 @@ func (r *ServiceAccountMapper) extractScopes(pod *v1.Pod) ([]string, error) {
 	scopes, annotationPresent := pod.GetAnnotations()[r.iamScopeKey]
 
 	if !annotationPresent && r.defaultScopes == "" {
-		return nil, fmt.Errorf("Unable to find scopes for IP %s", pod.Status.PodIP)
+		return nil, fmt.Errorf("unable to find scopes for IP %s", pod.Status.PodIP)
 	}
 
 	if !annotationPresent {
@@ -104,7 +104,7 @@ func (r *ServiceAccountMapper) checkServiceAccountForNamespace(serviceAccount st
 
 	ns, err := r.store.NamespaceByName(namespace)
 	if err != nil {
-		log.Debug("Unable to find an indexed namespace of %s", namespace)
+		log.Debugf("Unable to find an indexed namespace of %s", namespace)
 		return false
 	}
 

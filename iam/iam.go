@@ -46,12 +46,12 @@ func (iam *Client) ImpersonateServiceAccount(serviceAccountMappingResult *mappin
 
 		client, err := google.DefaultClient(ctx, iamcredentials.CloudPlatformScope)
 		if err != nil {
-			return nil, fmt.Errorf("Failed to get google client: %s", err.Error())
+			return nil, fmt.Errorf("failed to get google client: %s", err.Error())
 		}
 
 		iamCredentialsClient, err := iamcredentials.New(client)
 		if err != nil {
-			return nil, fmt.Errorf("Failed to get iam credentials client: %s", err.Error())
+			return nil, fmt.Errorf("failed to get iam credentials client: %s", err.Error())
 		}
 
 		generateAccessTokenResponse, err := iamCredentialsClient.Projects.ServiceAccounts.GenerateAccessToken(
@@ -62,7 +62,7 @@ func (iam *Client) ImpersonateServiceAccount(serviceAccountMappingResult *mappin
 		).Do()
 
 		if err != nil {
-			return nil, fmt.Errorf("Failed to generate token: %s", err.Error())
+			return nil, fmt.Errorf("failed to generate token: %s", err.Error())
 		}
 
 		return generateAccessTokenResponse, nil
@@ -75,7 +75,7 @@ func (iam *Client) ImpersonateServiceAccount(serviceAccountMappingResult *mappin
 
 	expiresTime, err := time.Parse(time.RFC3339, accessToken.ExpireTime)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to parse token expiry time %v: %s", accessToken.ExpireTime, err.Error())
+		return nil, fmt.Errorf("failed to parse token expiry time %v: %s", accessToken.ExpireTime, err.Error())
 	}
 
 	return &Credentials{

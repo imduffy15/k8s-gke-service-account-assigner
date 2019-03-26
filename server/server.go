@@ -34,6 +34,8 @@ const (
 	defaultMaxElapsedTime       = 2 * time.Second
 	defaultMaxInterval          = 1 * time.Second
 	defaultMetadataAddress      = "169.254.169.254"
+	defaultMetadataProxyAddress = "127.0.0.1:988"
+	defaultEnableMetadataProxy  = false
 	defaultNamespaceKey         = "accounts.google.com/allowed-service-accounts"
 )
 
@@ -48,6 +50,7 @@ type Server struct {
 	DefaultServiceAccount string
 	DefaultScopes         string
 	MetadataAddress       string
+	MetadataProxyAddress  string
 	HostInterface         string
 	HostIP                string
 	NodeName              string
@@ -56,6 +59,7 @@ type Server struct {
 	LogFormat             string
 	AddIPTablesRule       bool
 	Debug                 bool
+	EnableMetadataProxy   bool
 	Insecure              bool
 	NamespaceRestriction  bool
 	Verbose               bool
@@ -101,7 +105,7 @@ func (fn appHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			case error:
 				err = t
 			default:
-				err = errors.New("Unknown error")
+				err = errors.New("unknown error")
 			}
 			logger.WithField("res.status", http.StatusInternalServerError).
 				Errorf("PANIC error processing request: %+v", err)
@@ -356,17 +360,22 @@ func (s *Server) validateServiceAccountRequest(logger *log.Entry, w http.Respons
 			logger.Errorf("Error sending json %+v", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
-		return nil, fmt.Errorf("Invalid service account (%s): does not match annotated service account (%s)", wantedServiceAccount, serviceAccountMapping.ServiceAccount)
+		return nil, fmt.Errorf("invalid service account (%s): does not match annotated service account (%s)", wantedServiceAccount, serviceAccountMapping.ServiceAccount)
 	}
 
 	return serviceAccountMapping, nil
 }
 
 func (s *Server) reverseProxyHandler(logger *log.Entry, w http.ResponseWriter, r *http.Request) {
-	proxy := httputil.NewSingleHostReverseProxy(&url.URL{Scheme: "http", Host: s.MetadataAddress})
+	host := s.MetadataAddress
+	if s.EnableMetadataProxy {
+		host = s.MetadataProxyAddress
+	}
+
+	proxy := httputil.NewSingleHostReverseProxy(&url.URL{Scheme: "http", Host: host})
 	proxy.Transport = xForwardedForStripper{}
 	proxy.ServeHTTP(w, r)
-	logger.WithField("metadata.url", s.MetadataAddress).Debug("Proxy GCE metadata request")
+	logger.WithField("metadata.url", host).Debug("Proxy GCE metadata request")
 }
 
 func write(logger *log.Entry, w http.ResponseWriter, s string) {
@@ -438,6 +447,8 @@ func NewServer() *Server {
 		LogLevel:              defaultLogLevel,
 		LogFormat:             defaultLogFormat,
 		MetadataAddress:       defaultMetadataAddress,
+		MetadataProxyAddress:  defaultMetadataProxyAddress,
+		EnableMetadataProxy:   defaultEnableMetadataProxy,
 		NamespaceKey:          defaultNamespaceKey,
 	}
 }

@@ -81,7 +81,7 @@ func GetNamespaceServiceAccountAnnotation(ns *v1.Namespace, namespaceKey string)
 func NamespaceIndexFunc(obj interface{}) ([]string, error) {
 	namespace, ok := obj.(*v1.Namespace)
 	if !ok {
-		return nil, fmt.Errorf("Expected namespace but recieved: %+v", obj)
+		return nil, fmt.Errorf("expected namespace but recieved: %+v", obj)
 	}
 
 	return []string{namespace.GetName()}, nil

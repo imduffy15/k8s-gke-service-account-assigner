@@ -22,6 +22,8 @@ func addFlags(s *server.Server, fs *pflag.FlagSet) {
 	fs.StringVar(&s.IAMServiceAccountKey, "iam-role-key", s.IAMServiceAccountKey, "Pod annotation key used to retrieve the IAM role")
 	fs.BoolVar(&s.Insecure, "insecure", false, "Kubernetes server should be accessed without verifying the TLS. Testing only")
 	fs.StringVar(&s.MetadataAddress, "metadata-addr", s.MetadataAddress, "Address for the google compute engine metadata")
+	fs.StringVar(&s.MetadataProxyAddress, "metadata-proxy-addr", s.MetadataProxyAddress, "Address for the next-hop proxy, defaults to GKE's metadata-proxy location")
+	fs.BoolVar(&s.EnableMetadataProxy, "enable-metadata-proxy", s.Debug, "Send traffic to next-hop proxy")
 	fs.BoolVar(&s.AddIPTablesRule, "iptables", false, "Add iptables rule (also requires --host-ip)")
 	fs.StringVar(&s.HostInterface, "host-interface", "eth0", "Host interface for proxying google compute engine metadata")
 	fs.BoolVar(&s.NamespaceRestriction, "namespace-restrictions", false, "Enable namespace restrictions")
