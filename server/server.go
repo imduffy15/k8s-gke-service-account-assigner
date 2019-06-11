@@ -300,7 +300,7 @@ func (s *Server) serviceAccountHandler(logger *log.Entry, w http.ResponseWriter,
 
 		recursive := r.URL.Query().Get("recursive")
 
-		if recursive != "True" {
+		if !strings.EqualFold(recursive, "True") {
 			for _, path := range []string{"aliases", "email", "identity", "scopes", "token"} {
 				write(logger, w, fmt.Sprintf("%s\n", path))
 			}
