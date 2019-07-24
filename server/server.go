@@ -37,6 +37,8 @@ const (
 	defaultMetadataProxyAddress = "127.0.0.1:988"
 	defaultEnableMetadataProxy  = false
 	defaultNamespaceKey         = "accounts.google.com/allowed-service-accounts"
+	defaultFlavorHeaderName     = "Metadata-Flavor"
+	defaultFlavorHeaderValue    = "Google"
 )
 
 // Server encapsulates all of the parameters necessary for starting up
@@ -84,6 +86,8 @@ func (rw *responseWriter) WriteHeader(code int) {
 }
 
 func newResponseWriter(w http.ResponseWriter) *responseWriter {
+	// Set "Metadata-Flavor: Google" header
+	w.Header().Set(defaultFlavorHeaderName, defaultFlavorHeaderValue)
 	return &responseWriter{w, http.StatusOK}
 }
 
@@ -372,6 +376,8 @@ func (s *Server) reverseProxyHandler(logger *log.Entry, w http.ResponseWriter, r
 		host = s.MetadataProxyAddress
 	}
 
+	// Delete "Metadata-Flavor: Google" header to avoid duplication
+	w.Header().Del(defaultFlavorHeaderName)
 	proxy := httputil.NewSingleHostReverseProxy(&url.URL{Scheme: "http", Host: host})
 	proxy.Transport = xForwardedForStripper{}
 	proxy.ServeHTTP(w, r)
